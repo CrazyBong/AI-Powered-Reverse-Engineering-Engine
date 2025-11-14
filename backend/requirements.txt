@@ -1,0 +1,9 @@
+fastapi==0.100.0
+starlette==0.27.0
+httpx==0.24.1
+uvicorn
+python-multipart
+redis
+rq
+pydantic
+r2pipe

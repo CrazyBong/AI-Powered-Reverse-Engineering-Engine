@@ -1,0 +1,5 @@
+*.ts text diff=typescript
+*.tsx text diff=typescript
+*.py text diff=python
+*.json text
+*.md text
