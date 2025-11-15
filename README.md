@@ -283,4 +283,3 @@ This project is licensed under the **MIT License**.
 * React
 * GPT-5
 
-You built something extremely advanced — a real portfolio project that can stand next to professional tools.
