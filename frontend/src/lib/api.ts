@@ -1,66 +1,106 @@
-/// <reference types="vite/client" />
+import type {
+  UploadResponse,
+  StatusResponse,
+  FunctionEntry,
+  DisassemblyResponse,
+  ExplanationResponse,
+} from '../types';
 
-const BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-
-async function jsonFetch(url: string, opts: RequestInit = {}) {
-  const res = await fetch(`${BASE}${url}`, {
-    headers: {
-      // allow file uploads to set their own content-type
-      Accept: "application/json",
-      ...opts.headers,
-    },
-    ...opts,
-  });
-  const text = await res.text();
+// Safe environment variable access
+const getBaseUrl = () => {
   try {
-    const data = text ? JSON.parse(text) : null;
-    if (!res.ok) throw { status: res.status, data };
-    return data;
+    // @ts-ignore
+    return typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE 
+      // @ts-ignore
+      ? import.meta.env.VITE_API_BASE 
+      : 'http://localhost:8000';
   } catch (e) {
-    if (e instanceof SyntaxError) {
-      // non-json body
-      if (!res.ok) throw { status: res.status, body: text };
-      return text;
-    }
-    throw e;
+    return 'http://localhost:8000';
   }
-}
+};
+
+const BASE = getBaseUrl();
 
 export async function uploadFile(file: File) {
-  const fd = new FormData();
-  fd.append("file", file, file.name);
+  const form = new FormData();
+  form.append("file", file);
+
   const res = await fetch(`${BASE}/upload/`, {
     method: "POST",
-    body: fd,
+    body: form,
   });
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(`Upload failed: ${res.status} ${t}`);
-  }
-  return res.json();
+
+  if (!res.ok) throw new Error("Upload failed");
+
+  return await res.json(); // { file_id, status }
 }
 
 export async function getStatus(fileId: string) {
-  return jsonFetch(`/status/${fileId}`);
+  const res = await fetch(`${BASE}/status/${fileId}`);
+
+  if (!res.ok) throw new Error("Status check failed");
+
+  return await res.json(); // { file_id, status }
 }
 
 export async function getFunctions(fileId: string) {
-  return jsonFetch(`/functions/${fileId}`);
+  const res = await fetch(`${BASE}/functions/${fileId}`);
+  if (!res.ok) throw new Error("Failed to load functions");
+
+  const data = await res.json();
+
+  return data.functions.map((fn: any) => ({
+    name: fn.name,
+    address: "0x" + fn.offset.toString(16),  // convert number → hex string
+    size: fn.size,
+  }));
 }
 
 export async function getDisassembly(fileId: string, addr: string) {
-  return jsonFetch(`/disassembly/${fileId}/${addr}`);
+  // Convert address from hex string (0x1234) to decimal string (4660)
+  const addrDecimal = parseInt(addr, 16).toString();
+  
+  const res = await fetch(`${BASE}/disassembly/${fileId}/${addrDecimal}`);
+  if (!res.ok) throw new Error("Failed to load disassembly");
+
+  const data = await res.json();
+
+  return {
+    function_name: data.disassembly.name || `Function at ${data.addr}`,  
+    address: data.addr,
+    lines: data.disassembly.ops.map((op: any) => ({
+      offset: op.offset,
+      opcode: op.opcode || op.disasm || '',
+      disasm: op.disasm || op.opcode || '',
+      bytes: op.bytes || "",
+      size: op.size || 0,
+      type: op.type || 'unknown',
+      jump: op.jump,
+      comment: op.comment || "",
+    })),
+  };
 }
 
-/**
- * Fetch explanation from backend.
- * Returns { file_id, addr, explanation }.
- */
 export async function getExplanation(fileId: string, addr: string) {
-  const res = await fetch(`${BASE}/explain/${fileId}/${addr}`);
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || `Failed to fetch explanation: ${res.status}`);
+  // Convert address from hex string (0x1234) to decimal string (4660)
+  const addrDecimal = parseInt(addr, 16).toString();
+  
+  const cacheKey = `explain:${fileId}:${addrDecimal}`;
+
+  // 1) Check localStorage
+  const cached = localStorage.getItem(cacheKey);
+  if (cached) {
+    return { explanation: cached, cached: true };
   }
-  return res.json();
+
+  // 2) Fetch backend
+  const res = await fetch(`${BASE}/explain/${fileId}/${addrDecimal}`);
+  if (!res.ok) throw new Error("Failed to load explanation");
+
+  const data = await res.json();
+
+  // 3) Cache result
+  localStorage.setItem(cacheKey, data.explanation);
+
+  return { explanation: data.explanation, cached: false };
 }

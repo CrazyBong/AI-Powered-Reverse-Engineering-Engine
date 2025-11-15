@@ -1,52 +1,74 @@
-import { useEffect, useState } from "react";
-import { getFunctions, getDisassembly } from "../lib/api";
-import { FunctionEntry } from "../type";
-import FunctionList from "../components/FunctionList";
-import CodeView from "../components/CodeView";
+import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { getFunctions, getDisassembly } from '../lib/api';
+import type { FunctionEntry } from '../types';
+import FunctionList from '../components/FunctionList';
+import CodeView from '../components/CodeView';
+import ExplanationPanel from '../components/ExplanationPanel';
+import Header from '../components/Header';
 
-export default function AnalysisView({ fileId, onBack }: { fileId: string; onBack: () => void }) {
+export default function AnalysisView() {
+  const { fileId } = useParams<{ fileId: string }>();
   const [functions, setFunctions] = useState<FunctionEntry[]>([]);
   const [selected, setSelected] = useState<FunctionEntry | null>(null);
-  const [disasm, setDisasm] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!fileId) return;
+
     async function load() {
-      const res = await getFunctions(fileId);
-      setFunctions(res.functions || []);
-      if (res.functions && res.functions.length > 0) {
-        setSelected(res.functions[0]);
+      try {
+        const data = await getFunctions(fileId);
+        setFunctions(data);
+        if (data.length > 0) {
+          setSelected(data[0]);
+        }
+        setLoading(false);
+      } catch (error) {
+        console.error('Failed to load functions:', error);
+        setLoading(false);
       }
     }
     load();
   }, [fileId]);
 
-  useEffect(() => {
-    async function loadDisasm() {
-      if (!selected) return;
-      const addr = String(selected.offset || selected.addr || selected.offset);
-      const res = await getDisassembly(fileId, addr);
-      setDisasm(res.disassembly || res);
-    }
-    loadDisasm();
-  }, [selected]);
+  if (loading) {
+    return (
+      <>
+        <Header />
+        <div className="min-h-screen flex items-center justify-center pt-16">
+          <div className="text-center">
+            <div className="w-12 h-12 mx-auto mb-4 border-4 border-white/20 border-t-blue-500 rounded-full animate-spin" />
+            <p className="text-white/60">Loading analysis...</p>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
-    <div className="grid grid-cols-12 gap-4">
-      <div className="col-span-3">
-        <div className="card">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="font-semibold">Functions</h3>
-            <button onClick={onBack} className="text-sm text-slate-500">Close</button>
+    <>
+      <Header />
+      <div className="fixed top-32 bottom-0 left-0 right-0 flex flex-col">
+        <div className="flex-1 grid grid-cols-[300px_1fr_400px] overflow-hidden">
+          <div className="border-r border-white/10 overflow-y-auto">
+            <FunctionList
+              functions={functions}
+              selectedAddress={selected?.address || null}
+              onSelectFunction={(addr) => {
+                const func = functions.find((f) => f.address === addr);
+                if (func) setSelected(func);
+              }}
+            />
           </div>
-          <FunctionList items={functions} onSelect={(f)=>setSelected(f)} selected={selected} fileId={fileId} />
+          <div className="border-r border-white/10 overflow-y-auto">
+            <CodeView fileId={fileId || ''} address={selected?.address || null} />
+          </div>
+          <div className="overflow-y-auto">
+            <ExplanationPanel fileId={fileId || ''} address={selected?.address || null} />
+          </div>
         </div>
       </div>
-
-      <div className="col-span-9">
-        <div className="card">
-          <CodeView data={disasm} />
-        </div>
-      </div>
-    </div>
+    </>
   );
 }

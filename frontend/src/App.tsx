@@ -1,44 +1,35 @@
-import { useState } from "react";
-import UploadView from "./pages/UploadView";
-import ProcessingView from "./pages/ProcessingView";
-import AnalysisView from "./pages/AnalysisView";
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
+import UploadView from './pages/UploadView';
+import ProcessingView from './pages/ProcessingView';
+import AnalysisView from './pages/AnalysisView';
+import AboutView from './pages/AboutView';
+import ContactView from './pages/ContactView';
 
-type Page = "upload" | "processing" | "analysis";
+const Silk = lazy(() => import('./components/Silk'));
+
 export default function App() {
-  const [page, setPage] = useState<Page>("upload");
-  const [fileId, setFileId] = useState<string | null>(null);
-
   return (
-    <div className="min-h-screen">
-      <header className="header container">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">AI-Powered Reverse-Engineering (MVP)</h1>
-          <div className="text-sm text-slate-500">Frontend — React White</div>
-        </div>
-      </header>
-
-      <main className="container py-6">
-        {page === "upload" && (
-          <UploadView
-            onUploaded={(id) => {
-              setFileId(id);
-              setPage("processing");
-            }}
-          />
-        )}
-
-        {page === "processing" && fileId && (
-          <ProcessingView
-            fileId={fileId}
-            onComplete={() => setPage("analysis")}
-            onBack={() => setPage("upload")}
-          />
-        )}
-
-        {page === "analysis" && fileId && (
-          <AnalysisView fileId={fileId} onBack={() => setPage("upload")} />
-        )}
-      </main>
-    </div>
+    <>
+      <Suspense fallback={null}>
+        <Silk
+          speed={3}
+          scale={1.2}
+          color="#FF4747"
+          noiseIntensity={1.8}
+          rotation={0}
+        />
+      </Suspense>
+      <HashRouter>
+        <Routes>
+          <Route path="/" element={<UploadView />} />
+          <Route path="/processing/:fileId" element={<ProcessingView />} />
+          <Route path="/analysis/:fileId" element={<AnalysisView />} />
+          <Route path="/about" element={<AboutView />} />
+          <Route path="/contact" element={<ContactView />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </HashRouter>
+    </>
   );
 }

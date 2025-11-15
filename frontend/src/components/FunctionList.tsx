@@ -1,43 +1,65 @@
-import { FunctionEntry } from "../type";
-import React, { useState } from "react";
-import ExplanationPanel from "./ExplanationPanel";
+import { Search, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
+import type { FunctionEntry } from '../types';
 
-export default function FunctionList({ items, onSelect, selected, fileId }: { items: FunctionEntry[]; onSelect: (f: FunctionEntry) => void; selected?: FunctionEntry | null; fileId: string }) {
-  const [selectedForExplanation, setSelectedForExplanation] = useState<{ addr: string } | null>(null);
+interface FunctionListProps {
+  functions: FunctionEntry[];
+  selectedAddress: string | null;
+  onSelectFunction: (address: string) => void;
+}
+
+export default function FunctionList({
+  functions,
+  selectedAddress,
+  onSelectFunction,
+}: FunctionListProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredFunctions = functions.filter(
+    (fn) =>
+      fn.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      fn.address.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
-    <div className="space-y-2 max-h-[60vh] overflow-auto">
-      {items.map((f) => {
-        const key = String(f.offset || f.addr);
-        const isSel = selected && (selected.offset === f.offset || selected.addr === f.addr);
-        return (
-          <div key={key} className={`w-full text-left p-2 rounded ${isSel ? "bg-slate-100" : "hover:bg-slate-50"}`}>
-            <button onClick={()=>onSelect(f)} className="w-full text-left">
-              <div className="text-sm font-medium">{f.name || `fcn.${key}`}</div>
-              <div className="text-xs text-slate-500">0x{(f.offset||f.addr||0).toString(16)}</div>
-            </button>
-            <div className="flex items-center gap-2 mt-2">
-              <button
-                className="text-xs px-2 py-1 border rounded"
-                onClick={() => setSelectedForExplanation({ addr: key })}
-              >
-                Explain
-              </button>
-            </div>
-          </div>
-        );
-      })}
-      {items.length===0 && <div className="text-sm text-slate-400">No functions found.</div>}
-      
-      {selectedForExplanation && (
-        <div className="mt-4">
-          <ExplanationPanel
-            fileId={fileId}
-            addr={selectedForExplanation.addr}
-            onClose={() => setSelectedForExplanation(null)}
+    <div className="flex flex-col h-full bg-black/30 backdrop-blur-sm border-r border-white/10">
+      <div className="p-4 border-b border-white/10">
+        <h2 className="mb-3 text-white/90">Functions</h2>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+          <input
+            type="text"
+            placeholder="Search functions..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder:text-white/40 focus:outline-none focus:border-blue-500/50"
           />
         </div>
-      )}
+        <p className="mt-2 text-white/50">{filteredFunctions.length} functions</p>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        {filteredFunctions.map((fn) => (
+          <button
+            key={fn.address}
+            onClick={() => onSelectFunction(fn.address)}
+            className={`w-full px-4 py-3 text-left transition-colors border-b border-white/5 hover:bg-white/5 ${
+              selectedAddress === fn.address
+                ? 'bg-blue-500/20 border-l-4 border-l-blue-500'
+                : ''
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-white/90 truncate">{fn.name}</p>
+                <p className="text-white/50">{fn.address}</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-white/30 shrink-0 ml-2" />
+            </div>
+            <p className="text-white/40 mt-1">{fn.size} bytes</p>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
