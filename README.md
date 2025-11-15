@@ -282,5 +282,3 @@ This project is a **full-stack AI-powered RE platform** combining:
 * FastAPI
 * React
 * GPT-5
-
-You built something extremely advanced — a real portfolio project that can stand next to professional tools.
