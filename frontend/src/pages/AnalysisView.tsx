@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getFunctions, getDisassembly } from '../lib/api';
+import { getFunctions } from '../lib/api';
 import type { FunctionEntry } from '../types';
 import FunctionList from '../components/FunctionList';
 import CodeView from '../components/CodeView';
 import ExplanationPanel from '../components/ExplanationPanel';
 import Header from '../components/Header';
+import ControlFlowGraph from '../components/cfg/ControlFlowGraph';
 
 export default function AnalysisView() {
   const { fileId } = useParams<{ fileId: string }>();
   const [functions, setFunctions] = useState<FunctionEntry[]>([]);
   const [selected, setSelected] = useState<FunctionEntry | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'disassembly' | 'cfg' | 'explanation'>('disassembly');
 
   useEffect(() => {
     if (!fileId) return;
@@ -62,7 +64,36 @@ export default function AnalysisView() {
             />
           </div>
           <div className="border-r border-white/10 overflow-y-auto">
-            <CodeView fileId={fileId || ''} address={selected?.address || null} />
+            <div className="flex border-b border-white/10 bg-black/40">
+              <button
+                onClick={() => setActiveTab('disassembly')}
+                className={`px-6 py-3 transition-colors ${
+                  activeTab === 'disassembly'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-transparent text-white/60 hover:text-white/90'
+                }`}
+              >
+                Disassembly
+              </button>
+              <button
+                onClick={() => setActiveTab('cfg')}
+                className={`px-6 py-3 transition-colors ${
+                  activeTab === 'cfg'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-transparent text-white/60 hover:text-white/90'
+                }`}
+              >
+                Control Flow Graph
+              </button>
+            </div>
+
+            <div className="flex-1">
+              {activeTab === 'disassembly' ? (
+                <CodeView fileId={fileId || ''} address={selected?.address || null} />
+              ) : (
+                <ControlFlowGraph fileId={fileId || ''} address={selected?.address || null} />
+              )}
+            </div>
           </div>
           <div className="overflow-y-auto">
             <ExplanationPanel fileId={fileId || ''} address={selected?.address || null} />

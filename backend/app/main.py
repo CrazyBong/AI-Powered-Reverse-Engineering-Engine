@@ -8,6 +8,7 @@ from app.api.status import router as status_router
 from app.api.functions import router as functions_router
 from app.api.explain import router as explain_router
 from app.api.disassembly import router as disasm_router
+from app.api.disassembly import cfg_router  # add this import
 
 
 def create_app():
@@ -35,6 +36,7 @@ def create_app():
     app.include_router(functions_router)
     app.include_router(explain_router)
     app.include_router(disasm_router)
+    app.include_router(cfg_router)  # register /cfg routes
 
     @app.get("/health")
     def health():

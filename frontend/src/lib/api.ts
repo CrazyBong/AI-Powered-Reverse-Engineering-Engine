@@ -20,6 +20,7 @@ const getBaseUrl = () => {
 };
 
 const BASE = getBaseUrl();
+const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000';
 
 export async function uploadFile(file: File) {
   const form = new FormData();
@@ -104,3 +105,29 @@ export async function getExplanation(fileId: string, addr: string) {
 
   return { explanation: data.explanation, cached: false };
 }
+
+export interface CFGBlock {
+  offset: string;
+  size: number;
+  jump?: string;
+  fail?: string;
+  instructions?: Array<{
+    offset: string;
+    opcode: string;
+    disasm: string;
+  }>;
+}
+
+export interface CFGResponse {
+  file_id: string;
+  address: string;
+  blocks: CFGBlock[];
+}
+
+export const getCFG = async (fileId: string, address: string) => {
+  const addr = address?.toString() ?? '';
+  if (!fileId || !addr) throw new Error('fileId and address are required');
+  const res = await fetch(`${API_BASE_URL}/cfg/${encodeURIComponent(fileId)}/${encodeURIComponent(addr)}`);
+  if (!res.ok) throw new Error(`Failed to fetch CFG (${res.status})`);
+  return res.json();
+};
