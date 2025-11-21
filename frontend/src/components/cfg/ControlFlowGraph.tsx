@@ -15,6 +15,8 @@ import { Loader2, Network } from 'lucide-react';
 import { getCFG } from '../../lib/api';
 import { getLayoutedElements } from './cfg-utils';
 import CFGNode from './CFGNode';
+import { toPng } from 'html-to-image';
+import { Download } from 'lucide-react';
 
 interface ControlFlowGraphProps {
   fileId: string;
@@ -85,8 +87,10 @@ function normalizeBlocks(payload: any): CFGBlock[] {
 function buildReactFlow(blocks: CFGBlock[]) {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
-
   const seen = new Set<string>();
+
+  // Compute intensity for coloring
+  const maxSize = Math.max(...blocks.map(b => b.size || 0), 1);
 
   for (const b of blocks) {
     const id = toHexId(b.offset);
@@ -96,17 +100,20 @@ function buildReactFlow(blocks: CFGBlock[]) {
       const first = (b.instructions || [])[0];
       const title = id;
       const preview = first?.disasm || first?.opcode || '';
+      const intensity = Math.min((b.size || 0) / maxSize, 1);
+      const bgColor = `rgba(59, 130, 246, ${0.2 + intensity * 0.6})`; // Blue gradient
+
       nodes.push({
         id,
         type: 'cfgNode',
         data: {
           title,
-          // limit instructions passed to the node
           instructions: (b.instructions || []).slice(0, 24),
           meta: { size: b.size },
           preview,
         },
         position: { x: 0, y: 0 },
+        style: { background: bgColor, borderColor: '#3b82f6' },
       });
       seen.add(id);
     }
@@ -194,6 +201,18 @@ export default function ControlFlowGraph({ fileId, address }: ControlFlowGraphPr
     };
   }, [fileId, address, setNodes, setEdges]);
 
+  const downloadImage = () => {
+    const element = document.querySelector('.react-flow') as HTMLElement;
+    if (element) {
+      toPng(element).then(dataUrl => {
+        const link = document.createElement('a');
+        link.download = `cfg-${address}.png`;
+        link.href = dataUrl;
+        link.click();
+      });
+    }
+  };
+
   if (!address) {
     return (
       <div className="flex flex-col items-center justify-center h-full bg-black/30 backdrop-blur-sm border-l border-white/10">
@@ -275,6 +294,10 @@ export default function ControlFlowGraph({ fileId, address }: ControlFlowGraphPr
             </div>
           </div>
         </Panel>
+
+        <button onClick={downloadImage} className="p-1 hover:bg-white/10 rounded">
+          <Download className="w-4 h-4" />
+        </button>
       </ReactFlow>
     </div>
   );

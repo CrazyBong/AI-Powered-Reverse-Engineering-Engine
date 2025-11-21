@@ -8,6 +8,10 @@ interface FunctionListProps {
   onSelectFunction: (address: string) => void;
 }
 
+function computeComplexity(edges: number, nodes: number) {
+  return edges - nodes + 2; // McCabe's formula
+}
+
 export default function FunctionList({
   functions,
   selectedAddress,
@@ -51,7 +55,20 @@ export default function FunctionList({
           >
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
-                <p className="text-white/90 truncate">{fn.name}</p>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono">{fn.name}</span>
+                  {fn.cfg_edges && (
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded ${
+                        computeComplexity(fn.cfg_edges, fn.cfg_nodes) > 10
+                          ? 'bg-red-500/20 text-red-400'
+                          : 'bg-green-500/20 text-green-400'
+                      }`}
+                    >
+                      Complexity: {computeComplexity(fn.cfg_edges, fn.cfg_nodes)}
+                    </span>
+                  )}
+                </div>
                 <p className="text-white/50">{fn.address}</p>
               </div>
               <ChevronRight className="w-4 h-4 text-white/30 shrink-0 ml-2" />
