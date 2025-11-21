@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Sparkles, Copy, Check, Loader2 } from 'lucide-react';
 import { getExplanation } from '../lib/api';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface ExplanationPanelProps {
   fileId: string;
@@ -31,13 +33,10 @@ export default function ExplanationPanel({ fileId, address }: ExplanationPanelPr
   const handleCopy = async () => {
     if (explanation) {
       try {
-        // Try to use the Clipboard API
         await navigator.clipboard.writeText(explanation);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       } catch (err) {
-        // Fallback for when Clipboard API is not available
-        // Create a temporary textarea element
         const textArea = document.createElement('textarea');
         textArea.value = explanation;
         textArea.style.position = 'fixed';
@@ -101,46 +100,144 @@ export default function ExplanationPanel({ fileId, address }: ExplanationPanelPr
 
       <div className="flex-1 overflow-y-auto p-6">
         {explanation ? (
-          <div className="prose prose-invert prose-sm max-w-none">
-            {explanation.split('\n').map((line, idx) => {
-              if (line.startsWith('## ')) {
-                return (
-                  <h2 key={idx} className="text-white/90 mt-6 mb-3">
-                    {line.replace('## ', '')}
+          <article className="prose prose-invert prose-sm max-w-none">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                // Headings
+                h1: ({ children }) => (
+                  <h1 className="text-2xl font-bold text-white/95 mt-8 mb-4 pb-2 border-b border-white/20">
+                    {children}
+                  </h1>
+                ),
+                h2: ({ children }) => (
+                  <h2 className="text-xl font-semibold text-white/90 mt-6 mb-3">
+                    {children}
                   </h2>
-                );
-              }
-              if (line.startsWith('### ')) {
-                return (
-                  <h3 key={idx} className="text-white/80 mt-4 mb-2">
-                    {line.replace('### ', '')}
+                ),
+                h3: ({ children }) => (
+                  <h3 className="text-lg font-medium text-white/85 mt-4 mb-2">
+                    {children}
                   </h3>
-                );
-              }
-              if (line.startsWith('- ')) {
-                return (
-                  <li key={idx} className="text-white/70 ml-4">
-                    {line.replace('- ', '')}
-                  </li>
-                );
-              }
-              if (line.trim() === '') {
-                return <br key={idx} />;
-              }
-              if (line.match(/^\d+\./)) {
-                return (
-                  <p key={idx} className="text-white/70 ml-4">
-                    {line}
+                ),
+                
+                // Paragraphs
+                p: ({ children }) => (
+                  <p className="text-white/70 mb-3 leading-relaxed">
+                    {children}
                   </p>
-                );
-              }
-              return (
-                <p key={idx} className="text-white/70 mb-2">
-                  {line}
-                </p>
-              );
-            })}
-          </div>
+                ),
+                
+                // Lists
+                ul: ({ children }) => (
+                  <ul className="list-disc list-inside text-white/70 mb-4 space-y-1">
+                    {children}
+                  </ul>
+                ),
+                ol: ({ children }) => (
+                  <ol className="list-decimal list-inside text-white/70 mb-4 space-y-1">
+                    {children}
+                  </ol>
+                ),
+                li: ({ children }) => (
+                  <li className="text-white/70 ml-4">
+                    {children}
+                  </li>
+                ),
+                
+                // Code blocks
+                code: ({ inline, children, ...props }: any) => {
+                  if (inline) {
+                    return (
+                      <code
+                        className="px-1.5 py-0.5 bg-white/10 text-blue-300 rounded text-sm font-mono"
+                        {...props}
+                      >
+                        {children}
+                      </code>
+                    );
+                  }
+                  return (
+                    <code
+                      className="block p-4 bg-black/40 text-green-300 rounded-lg overflow-x-auto font-mono text-sm border border-white/10 my-3"
+                      {...props}
+                    >
+                      {children}
+                    </code>
+                  );
+                },
+                pre: ({ children }) => (
+                  <pre className="mb-4">
+                    {children}
+                  </pre>
+                ),
+                
+                // Blockquote
+                blockquote: ({ children }) => (
+                  <blockquote className="border-l-4 border-blue-500/50 pl-4 py-2 my-4 bg-white/5 rounded-r">
+                    {children}
+                  </blockquote>
+                ),
+                
+                // Strong/Bold
+                strong: ({ children }) => (
+                  <strong className="font-semibold text-white/90">
+                    {children}
+                  </strong>
+                ),
+                
+                // Emphasis/Italic
+                em: ({ children }) => (
+                  <em className="italic text-white/80">
+                    {children}
+                  </em>
+                ),
+                
+                // Links
+                a: ({ href, children }) => (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-400 hover:text-blue-300 underline transition-colors"
+                  >
+                    {children}
+                  </a>
+                ),
+                
+                // Tables
+                table: ({ children }) => (
+                  <div className="overflow-x-auto my-4">
+                    <table className="min-w-full border border-white/20 rounded-lg">
+                      {children}
+                    </table>
+                  </div>
+                ),
+                thead: ({ children }) => (
+                  <thead className="bg-white/5">
+                    {children}
+                  </thead>
+                ),
+                th: ({ children }) => (
+                  <th className="px-4 py-2 text-left text-white/80 font-semibold border-b border-white/20">
+                    {children}
+                  </th>
+                ),
+                td: ({ children }) => (
+                  <td className="px-4 py-2 text-white/70 border-b border-white/10">
+                    {children}
+                  </td>
+                ),
+                
+                // Horizontal rule
+                hr: () => (
+                  <hr className="my-6 border-white/20" />
+                ),
+              }}
+            >
+              {explanation}
+            </ReactMarkdown>
+          </article>
         ) : (
           <div className="flex items-center justify-center h-full">
             <p className="text-white/40">No explanation generated yet</p>
